@@ -1,4 +1,4 @@
-
+#32000
 import numpy as np
 import wave
 from scipy import signal
@@ -13,15 +13,18 @@ from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Convolution2D, MaxPooling2D
 from sklearn.model_selection import train_test_split
 
-
-def process(filename):
+#signal_length= 100000
+#signal_length=50000
+def process(filename, signal_length= 100000, dual_source= False):
     sample_rate, audio_signal = wavfile.read(filename)  # File assumed to be in the same directory
-    print(audio_signal.shape)
-    audio_signal= np.mean(audio_signal[:50000], axis= 1)
-    signal_length = len(audio_signal)
+    #print("signal", audio_signal.shape)
+    if dual_source:
+        audio_signal= np.mean(audio_signal[:signal_length], axis= 1)
+    else:
+        audio_signal= audio_signal[:signal_length]
     N = audio_signal.shape[0]
     L = N / sample_rate
-    print(f'Audio length: {L:.2f} seconds')
+    #print(f'Audio length: {L:.2f} seconds')
     frame_size = 0.005
     frame_stride = 0.001  # overlap
     # convert from seconds to samples
@@ -34,51 +37,140 @@ def process(filename):
     pad_signal = np.append(audio_signal, z)
 
 
-    freqs, times, Sx = signal.spectrogram(audio_signal, fs=sample_rate, window='hanning',
-                                          nperseg=num_frames, noverlap=num_frames - 100,
-                                          detrend=False, scaling='spectrum')
-    f, ax = plt.subplots(figsize=(4.8, 2.4))
-    ax.pcolormesh(times, freqs / 1000, 10 * np.log10(Sx), cmap='viridis')
-    ax.set_ylabel('Frequency [kHz]')
-    ax.set_xlabel('Time [s]')
+    #freqs, times, Sx = signal.spectrogram(audio_signal, fs=sample_rate, window='hanning',
+    #                                      nperseg=num_frames, noverlap=num_frames - 100,
+    #                                      detrend=False, scaling='spectrum')
+    #f, ax = plt.subplots(figsize=(4.8, 2.4))
+    #ax.pcolormesh(times, freqs / 1000, 10 * np.log10(Sx), cmap='viridis')
+    #ax.set_ylabel('Frequency [kHz]')
+    #ax.set_xlabel('Time [s]')
     #plt.show()
 
     return audio_signal
 
-def classify(audio_signal):
-    x = [1,2,3,4,5,6,7,8,9,10]# [x for x in range(100)]# [[random.randint(0, 5) for x in range(2)] for x in range(100)]
-    x = np.array([x for asdf in range(0,10)])
-    print(x.shape)
-    y = [0 for x in range(10)]
+def trial_classify(audio_signal):
+    num_samples= 10
+    #x = [1,2,3,4,5,6,7,8,9,10]# [x for x in range(100)]# [[random.randint(0, 5) for x in range(2)] for x in range(100)]
+    #x = np.array([[1 for i in range(audio_signal.shape[0])]for j in range(num_samples)])
+    x = np.array([audio_signal for i in range(num_samples)])
 
+    print("x input shape:", x.shape)
+    y = np.array([[1] for x in range(num_samples)])
+    print("y shape", y.shape)
     x_train, x_test, y_train, y_test= train_test_split(x, y, test_size=0.2)
-    print(x_train,"\n", x_test,"\n", y_train, "\n", y_test)
-    print("signal shape", audio_signal.shape)
+    #print(x_train,"\n", x_test,"\n", y_train, "\n", y_test)
+    #print("signal shape", audio_signal.shape)
     #training the model
     model = Sequential()
-    model.add(Dense(1, input_shape= (10,) ,activation='relu'))
-    #model.add(Dropout(0.5))
-    #model.add(Dense(audio_signal.shape[0], activation='softmax'))
+    model.add(Dense(100, activation='relu', input_shape=(50000,)))
+    model.add(Dense(1, input_shape= (100,) ,activation='softmax'))
+
     #
     model.compile(loss='binary_crossentropy',
                   optimizer='rmsprop',
                   metrics=['accuracy'])
+    # data = np.random.random((1000, 100))
+    # labels = np.random.randint(2, size=(1000, 1))
 
+    # print(data.shape, labels.shape)
+    #model.fit(x, y, epochs=10, batch_size=32)
+    file= open("model.pk", "wb")
+    pk.dump(model, file)
+    file.close()
+
+    score = model.evaluate(x_test, y_test, batch_size=32, verbose= 1)
+    print(model.metrics_names[0],score[0])
+    print(model.metrics_names[1], score[1])
+
+    # yeet = np.array([[audio_signal[yah]] for yah in range(50000)])
+    #yeet = np.array(audio_signal)
+
+    #test_predict= np.array([1 for i in range(audio_signal.shape[0])])
+    #print("psize", test_predict.shape)
+    #print(model.predict(audio_signal))
+    # print(audio_signal.shape)
+    # print(yeet.shape)
+    print("output: ", model.predict(np.array([audio_signal, audio_signal])))
+
+
+def classify(x_set, y_set, num_samples, signal_length=100000):
+    #x = [1,2,3,4,5,6,7,8,9,10]# [x for x in range(100)]# [[random.randint(0, 5) for x in range(2)] for x in range(100)]
+    #x = np.array([[1 for i in range(audio_signal.shape[0])]for j in range(num_samples)])
+    x = np.array(x_set)
+    print("x input shape:", x.shape)
+    y = y_set
+    #y = np.array([[1] for x in range(num_samples)])
+    #print(y)
+    print("y shape", y.shape)
+    x_train, x_test, y_train, y_test= train_test_split(x, y, test_size=.2)
+
+    model = Sequential()
+    model.add(Dense(100, activation='sigmoid', input_shape=(signal_length,)))
+    model.add(Dense(2, input_shape= (100,) ,activation='softmax'))
+
+    #
+    model.compile(loss='binary_crossentropy',
+                  optimizer='rmsprop',
+                  metrics=['accuracy'])
+    model.fit(x, y, epochs=10, batch_size=100)
 
     file= open("model.pk", "wb")
     pk.dump(model, file)
     file.close()
 
-    score = model.evaluate(x_test, y_test, batch_size=32, verbose= 0)
-    print("score",score)
+    score = model.evaluate(x_test, y_test, batch_size= num_samples, verbose= 0)
+    print(model.metrics_names[0],score[0])
+    print(model.metrics_names[1], score[1])
+    return model
 
 
+def predict(model, to_predict):
+    predictions=  model.predict(np.array([i for i in to_predict]))
+    #print(predictions)
+    print("output: \n")
+    for i in predictions:
+        #print(i)
+        if i[0]>=i[1]:
+            print([1,0])
+        else:
+            print([0,1])
+    #print([1 for i in predictions if i>= .5 else 0])
 
-audio_signal= process("watermeloncracktest.wav")
-classify(audio_signal)
+def old_six_signals():
+    audio_signals=[]
+    to_predict=[]
+    for x in range(1, 4):
+        to_predict.append(process(str(x)+".wav"))
+        for y in range(100):
+            audio_signals.append(process(str(x)+".wav"))
+    for x in range(1, 4):
+        for y in range(100):
+            audio_signals.append(process("S"+str(x)+".wav"))
+    return audio_signals, to_predict
 
-#mfcc= process("watermeloncracktest.wav")
-#view_mfcc_spectrogram(mfcc)
+def six_signals(num_samples):
+    training_data= []
+    to_predict= []
+    for x in range(1, 4):
+        to_predict.append(process(str(x)+".wav"))
+        for y in range(100):
+            training_data.append(process(str(x)+".wav"))
+
+    for x in range(1,4):
+        to_predict.append(process("S"+str(x)+".wav"))
+        for y in range(100):
+            training_data.append(process("S"+str(x)+".wav"))
+    return training_data, to_predict
 
 
-print(audio_signal.shape)
+num_samples= 600
+x_set, to_predict= six_signals(num_samples)
+y_set= np.array([[1,0] for x in range(int(num_samples/2))]+ [[0,1] for x in range(int(num_samples/2))])
+model = classify(x_set, y_set, num_samples)
+predict(model, to_predict)
+
+#test_signal= process("watermeloncracktest.wav", dual_source=True)
+#print(test_signal.shape)
+#trial_classify(test_signal)
+
+#rint(round(.222222354))
