@@ -46,16 +46,19 @@ def process(filename):
     return audio_signal
 
 def classify(audio_signal):
-    x = [[random.randint(0, 5) for x in range(2)] for x in range(10)]
+    x = [1,2,3,4,5,6,7,8,9,10]# [x for x in range(100)]# [[random.randint(0, 5) for x in range(2)] for x in range(100)]
+    x = np.array([x for asdf in range(0,10)])
+    print(x.shape)
     y = [0 for x in range(10)]
 
     x_train, x_test, y_train, y_test= train_test_split(x, y, test_size=0.2)
-
+    print(x_train,"\n", x_test,"\n", y_train, "\n", y_test)
+    print("signal shape", audio_signal.shape)
     #training the model
     model = Sequential()
-    model.add(Dense(audio_signal.shape[1], activation='relu'))
-    model.add(Dropout(0.5))
-    model.add(Dense(audio_signal.shape[1], activation='softmax'))
+    model.add(Dense(1, input_shape= (10,) ,activation='relu'))
+    #model.add(Dropout(0.5))
+    #model.add(Dense(audio_signal.shape[0], activation='softmax'))
     #
     model.compile(loss='binary_crossentropy',
                   optimizer='rmsprop',
@@ -67,7 +70,7 @@ def classify(audio_signal):
     file.close()
 
     score = model.evaluate(x_test, y_test, batch_size=32, verbose= 0)
-    return score
+    print("score",score)
 
 
 
